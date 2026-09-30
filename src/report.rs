@@ -6,8 +6,8 @@
 //! returns an immediate alert line when something crosses a configured
 //! threshold or a detector fires.
 
-use crate::stats::{weighted, Cusum, Ewma, Histogram, Robust, Welford};
 use crate::stake::StakeMap;
+use crate::stats::{weighted, Cusum, Ewma, Histogram, Robust, Welford};
 use crate::tracker::Measurement;
 
 /// How many stake-weighted samples to keep (bounded memory).
@@ -103,11 +103,7 @@ impl Watchdog {
 
     /// Records one measurement; returns an immediate alert line when the
     /// sample crosses the configured threshold or a detector fires.
-    pub fn push_measurement(
-        &mut self,
-        m: &Measurement,
-        stake: Option<u64>,
-    ) -> Option<String> {
+    pub fn push_measurement(&mut self, m: &Measurement, stake: Option<u64>) -> Option<String> {
         self.counters.slots_rooted += 1;
         let finality = m.finality_ms;
         self.finality_hist.push(finality as u64);
@@ -132,7 +128,7 @@ impl Watchdog {
 
         let mut alerts: Vec<String> = Vec::new();
 
-        // Outlier classification (robust — heavy tails cannot fool it).
+        // Outlier classification (robust: heavy tails cannot fool it).
         if let Some(true) = self.robust.is_outlier(finality) {
             self.counters.outliers += 1;
         }
@@ -161,7 +157,9 @@ impl Watchdog {
                 let word = if direction > 0 { "SLOWER" } else { "FASTER" };
                 alerts.push(format!(
                     "REGIME SHIFT at slot {}: finality trending {} than baseline {:.0}ms",
-                    m.slot, word, cusum.baseline().0
+                    m.slot,
+                    word,
+                    cusum.baseline().0
                 ));
             }
         }
@@ -208,14 +206,23 @@ impl Watchdog {
         self.counters.dead_slots += 1;
     }
 
-    /// Renders the terminal report.
-    pub fn render(&self, current_slot: u64, stake_map: Option<&StakeMap>) -> String {
+    /// Renders the terminal report. `in_flight` is the tracker's live
+    /// in-flight slot count.
+    pub fn render(
+        &self,
+        current_slot: u64,
+        in_flight: usize,
+        stake_map: Option<&StakeMap>,
+    ) -> String {
         let mut out = String::new();
-        out.push_str(&format!("=== finality watchdog @ slot {current_slot} ===\n"));
         out.push_str(&format!(
-            "rooted {} | dead {} | in-flight — | reconnects {} | unknown kinds {} | clock skew {}\n",
+            "=== finality watchdog @ slot {current_slot} ===\n"
+        ));
+        out.push_str(&format!(
+            "rooted {} | dead {} | in-flight {} | reconnects {} | unknown kinds {} | clock skew {}\n",
             self.counters.slots_rooted,
             self.counters.dead_slots,
+            in_flight,
             self.counters.reconnects,
             self.counters.unknown_kinds,
             self.counters.clock_skew,
@@ -330,7 +337,11 @@ impl Watchdog {
         if !self.shifts.is_empty() {
             out.push_str("regime shifts:\n");
             for shift in self.shifts.iter().rev().take(5).rev() {
-                let word = if shift.direction > 0 { "slower" } else { "faster" };
+                let word = if shift.direction > 0 {
+                    "slower"
+                } else {
+                    "faster"
+                };
                 out.push_str(&format!(
                     "  slot {} (at {} UTC): {} than baseline {:.0}ms\n",
                     shift.slot,
@@ -368,11 +379,15 @@ mod tests {
     fn warmup_then_stable() {
         let mut wd = watchdog();
         for slot in 1..=10u64 {
-            assert!(wd.push_measurement(&measurement(slot, 2000.0), None).is_none());
+            assert!(wd
+                .push_measurement(&measurement(slot, 2000.0), None)
+                .is_none());
         }
         assert!(wd.armed());
         for slot in 11..=100u64 {
-            assert!(wd.push_measurement(&measurement(slot, 2000.0), None).is_none());
+            assert!(wd
+                .push_measurement(&measurement(slot, 2000.0), None)
+                .is_none());
         }
         assert_eq!(wd.counters().slots_rooted, 100);
         assert_eq!(wd.counters().outliers, 0);
@@ -392,7 +407,10 @@ mod tests {
         assert!(wd.armed());
         let mut shift_seen = false;
         for slot in 11..=200u64 {
-            if wd.push_measurement(&measurement(slot, 1500.0), None).is_some() {
+            if wd
+                .push_measurement(&measurement(slot, 1500.0), None)
+                .is_some()
+            {
                 shift_seen = true;
                 break;
             }
@@ -408,7 +426,9 @@ mod tests {
     fn threshold_alerts() {
         let mut wd = Watchdog::new(10, 8, 0.1, 5.0, Some(3000.0), || 1_000_000);
         for slot in 1..=5u64 {
-            assert!(wd.push_measurement(&measurement(slot, 2000.0), None).is_none());
+            assert!(wd
+                .push_measurement(&measurement(slot, 2000.0), None)
+                .is_none());
         }
         let alert = wd
             .push_measurement(&measurement(6, 4000.0), None)
@@ -424,7 +444,7 @@ mod tests {
             wd.push_measurement(&measurement(slot, 2000.0), Some(1000));
         }
         assert_eq!(wd.counters().slots_rooted, 20);
-        let report = wd.render(20, None);
+        let report = wd.render(20, 0, None);
         assert!(report.contains("stake-weighted"), "report:\n{report}");
     }
 
@@ -442,11 +462,11 @@ mod tests {
     #[test]
     fn renders_warmup_state() {
         let wd = watchdog();
-        let report = wd.render(0, None);
+        let report = wd.render(0, 0, None);
         assert!(report.contains("waiting for the first rooted slot"));
         let mut wd2 = watchdog();
         wd2.push_measurement(&measurement(1, 2000.0), None);
-        let report = wd2.render(1, None);
+        let report = wd2.render(1, 0, None);
         assert!(report.contains("SPC: warming up 1/10"), "report:\n{report}");
     }
 }

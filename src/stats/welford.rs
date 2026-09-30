@@ -99,7 +99,7 @@ mod tests {
         assert!(w.variance().unwrap() > 0.0);
         assert!(w.variance().unwrap() < 100.0);
         // 10_000 samples of (i % 7): counts are 4·1429 + 3·1428, so the true
-        // mean of the added part is 2.9994 — not 3.0.
+        // mean of the added part is 2.9994, not 3.0.
         let expected_mean = 2_000_000_000.0 + 2.9994;
         assert!((w.mean().unwrap() - expected_mean).abs() < 1e-3);
     }

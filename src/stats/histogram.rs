@@ -71,7 +71,7 @@ impl Histogram {
         let shift = e - self.half_bits as u64;
         let start = m << shift;
         // Width is always 2^shift; the exclusive end `(m+1) << shift` may
-        // exceed u64::MAX for the top bucket (values near u64::MAX) — callers
+        // exceed u64::MAX for the top bucket (values near u64::MAX); callers
         // use checked_add when they need the end.
         let width = 1u64 << shift;
         (start, width)
@@ -165,8 +165,7 @@ impl Histogram {
             }
             cum += c as u64;
         }
-        self.max()
-            .map(|m| m as f64)
+        self.max().map(|m| m as f64)
     }
 }
 
@@ -188,7 +187,11 @@ mod tests {
             assert!(idx >= prev_idx, "monotonic at v={v}");
             prev_idx = idx;
             let (start, width) = hist.bucket_range(idx);
-            assert!(v >= start && v < start + width, "contains v={v} in [{start},{})+{width}", start + width);
+            assert!(
+                v >= start && v < start + width,
+                "contains v={v} in [{start},{})+{width}",
+                start + width
+            );
             // Relative width: exact in the linear region, ≤ 2^-h above it.
             if v >= linear_end {
                 assert!(

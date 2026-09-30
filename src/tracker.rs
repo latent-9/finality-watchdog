@@ -4,7 +4,7 @@
 //! Tracks per-slot server timestamps through the lifecycle freeze →
 //! optimistic confirmation → root (= finalized) and emits a measurement when
 //! a slot roots. Dead slots are dropped. Client-side arrival timestamps are
-//! compared against server timestamps to expose network overhead — a negative
+//! compared against server timestamps to expose network overhead: a negative
 //! difference means clock skew and is reported as `None` rather than a
 //! nonsense negative latency.
 
@@ -15,13 +15,35 @@ use serde::Deserialize;
 /// A parsed `SlotUpdate` from the wire (camelCase, `type`-tagged).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlotUpdate {
-    FirstShredReceived { slot: u64, timestamp: u64 },
-    Completed { slot: u64, timestamp: u64 },
-    CreatedBank { slot: u64, parent: u64, timestamp: u64 },
-    Frozen { slot: u64, timestamp: u64 },
-    Dead { slot: u64, timestamp: u64 },
-    OptimisticConfirmation { slot: u64, timestamp: u64 },
-    Root { slot: u64, timestamp: u64 },
+    FirstShredReceived {
+        slot: u64,
+        timestamp: u64,
+    },
+    Completed {
+        slot: u64,
+        timestamp: u64,
+    },
+    CreatedBank {
+        slot: u64,
+        parent: u64,
+        timestamp: u64,
+    },
+    Frozen {
+        slot: u64,
+        timestamp: u64,
+    },
+    Dead {
+        slot: u64,
+        timestamp: u64,
+    },
+    OptimisticConfirmation {
+        slot: u64,
+        timestamp: u64,
+    },
+    Root {
+        slot: u64,
+        timestamp: u64,
+    },
 }
 
 impl SlotUpdate {
@@ -42,7 +64,7 @@ impl SlotUpdate {
 }
 
 /// The wire shape of a slot update notification result. `stats` (on frozen)
-/// and future fields are ignored — the watcher only needs slot + timestamp.
+/// and future fields are ignored; the watcher only needs slot + timestamp.
 #[derive(Debug, Deserialize)]
 struct WireUpdate {
     #[serde(rename = "type")]
@@ -188,7 +210,7 @@ impl Tracker {
         self.slots.len()
     }
 
-    /// Drops in-flight entries that fell far behind the highest slot seen —
+    /// Drops in-flight entries that fell far behind the highest slot seen;
     /// their Root (if any) was missed, e.g. across a reconnect.
     pub fn prune(&mut self) {
         let horizon = self.max_seen.saturating_sub(1024);
@@ -201,15 +223,24 @@ mod tests {
     use super::*;
 
     fn frozen(slot: u64, ts: u64) -> SlotUpdate {
-        SlotUpdate::Frozen { slot, timestamp: ts }
+        SlotUpdate::Frozen {
+            slot,
+            timestamp: ts,
+        }
     }
 
     fn confirmed(slot: u64, ts: u64) -> SlotUpdate {
-        SlotUpdate::OptimisticConfirmation { slot, timestamp: ts }
+        SlotUpdate::OptimisticConfirmation {
+            slot,
+            timestamp: ts,
+        }
     }
 
     fn rooted(slot: u64, ts: u64) -> SlotUpdate {
-        SlotUpdate::Root { slot, timestamp: ts }
+        SlotUpdate::Root {
+            slot,
+            timestamp: ts,
+        }
     }
 
     /// Full lifecycle emits a measurement with the correct latencies.
@@ -252,7 +283,13 @@ mod tests {
     fn dead_slot_dropped() {
         let mut t = Tracker::new();
         t.on_update(frozen(100, 1_000), 1_001);
-        t.on_update(SlotUpdate::Dead { slot: 100, timestamp: 1_100 }, 1_101);
+        t.on_update(
+            SlotUpdate::Dead {
+                slot: 100,
+                timestamp: 1_100,
+            },
+            1_101,
+        );
         assert_eq!(t.in_flight(), 0);
         // A late root for the dead slot must not measure.
         assert!(t.on_update(rooted(100, 2_500), 2_501).is_none());

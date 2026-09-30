@@ -71,7 +71,7 @@ impl Robust {
         } else {
             (devs[n / 2 - 1] + devs[n / 2]) / 2.0
         };
-        // MAD of a constant window is 0 — fall back to a floor so z-scores
+        // MAD of a constant window is 0: fall back to a floor so z-scores
         // stay finite (a constant stream has no outliers by definition).
         Some(if mad <= 0.0 { f64::MIN_POSITIVE } else { mad })
     }
@@ -118,7 +118,7 @@ mod tests {
         }
         assert_eq!(r.is_outlier(50_000.0), Some(true));
         // 48 of 64 samples are baseline (75% majority): the median and MAD
-        // still sit at the baseline, so the baseline itself is NOT flagged —
+        // still sit at the baseline, so the baseline itself is NOT flagged;
         // the burst cannot drag the baseline with it.
         assert_eq!(r.is_outlier(2000.0), Some(false));
     }

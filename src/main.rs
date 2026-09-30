@@ -1,9 +1,9 @@
-//! finality-watchdog — live Solana finality latency watchdog.
+//! finality-watchdog: live Solana finality latency watchdog.
 //!
 //! Streams slot updates from an Agave validator RPC, measures the
 //! freeze → confirm → finalize latency distributions, weights them by the
 //! slot leader's activated stake, and statistically detects consensus regime
-//! shifts with CUSUM — the tool to watch when the Alpenglow transition ships.
+//! shifts with CUSUM: the tool to watch when the Alpenglow transition ships.
 
 mod report;
 mod rpc;
@@ -20,7 +20,7 @@ use tokio::sync::{mpsc, watch};
 
 use crate::report::Watchdog;
 use crate::stake::StakeMap;
-use crate::stream::{StreamEvent, now_unix_ms};
+use crate::stream::{now_unix_ms, StreamEvent};
 use crate::tracker::{SlotUpdate, Tracker};
 
 /// Live Solana finality latency watchdog: streams slot updates, measures
@@ -67,11 +67,7 @@ async fn main() -> anyhow::Result<()> {
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
 
     // Stream task: websocket → raw updates with arrival timestamps.
-    let stream_handle = tokio::spawn(stream::run(
-        args.url.clone(),
-        event_tx,
-        shutdown_rx.clone(),
-    ));
+    let stream_handle = tokio::spawn(stream::run(args.url.clone(), event_tx, shutdown_rx.clone()));
 
     // Stake task: poll the leader schedule + vote accounts.
     let (stake_tx, stake_rx) = watch::channel(None::<Arc<StakeMap>>);
@@ -100,12 +96,13 @@ async fn main() -> anyhow::Result<()> {
         args.alert_ms,
         now_unix_ms,
     );
-    let mut report_timer = tokio::time::interval(Duration::from_secs(args.report_interval_secs.max(1)));
+    let mut report_timer =
+        tokio::time::interval(Duration::from_secs(args.report_interval_secs.max(1)));
     loop {
         tokio::select! {
             _ = report_timer.tick() => {
                 let map = stake_rx.borrow().clone();
-                print!("{}", watchdog.render(tracker.max_seen(), map.as_deref()));
+                print!("{}", watchdog.render(tracker.max_seen(), tracker.in_flight(), map.as_deref()));
             }
             event = event_rx.recv() => match event {
                 Some(StreamEvent::Update(update, arrival)) => {
@@ -150,7 +147,11 @@ async fn main() -> anyhow::Result<()> {
                 "\n  slot {} at {} UTC: {} than baseline {:.0}ms",
                 shift.slot,
                 format_unix_ms(shift.at_ms),
-                if shift.direction > 0 { "slower" } else { "faster" },
+                if shift.direction > 0 {
+                    "slower"
+                } else {
+                    "faster"
+                },
                 shift.baseline_mean_ms,
             ));
         }

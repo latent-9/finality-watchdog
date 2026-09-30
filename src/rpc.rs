@@ -32,8 +32,8 @@ async fn rpc(url: &str, method: &str, params: Value) -> anyhow::Result<Value> {
     })
     .await
     .map_err(|e| anyhow!("join: {e}"))??;
-    let value: Value =
-        serde_json::from_str(&text).with_context(|| format!("json: {}", &text[..text.len().min(200)]))?;
+    let value: Value = serde_json::from_str(&text)
+        .with_context(|| format!("json: {}", &text[..text.len().min(200)]))?;
     if let Some(err) = value.get("error") {
         anyhow::bail!("rpc error from {method}: {err}");
     }
@@ -52,7 +52,7 @@ pub async fn fetch_epoch_info(url: &str) -> anyhow::Result<Value> {
 ///
 /// Called with NO params: the public RPC returns `null` for an explicit
 /// epoch (verified live against api.mainnet-beta.solana.com), and without
-/// params it serves the current epoch's schedule — which is exactly what the
+/// params it serves the current epoch's schedule, which is exactly what the
 /// watcher wants, since the map is refreshed per epoch anyway.
 pub async fn fetch_leader_schedule(url: &str) -> anyhow::Result<HashMap<String, Vec<u64>>> {
     let value = rpc(url, "getLeaderSchedule", serde_json::json!([])).await?;

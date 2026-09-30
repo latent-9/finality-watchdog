@@ -41,7 +41,7 @@ pub fn now_unix_ms() -> u64 {
 }
 
 /// Runs the stream until shutdown is signaled. Errors are logged and retried
-/// with backoff — this function only returns on shutdown or an unrecoverable
+/// with backoff; this function only returns on shutdown or an unrecoverable
 /// task failure.
 pub async fn run(url: String, tx: mpsc::Sender<StreamEvent>, mut shutdown: watch::Receiver<bool>) {
     let mut backoff = 1u64;
@@ -91,9 +91,7 @@ async fn connect_and_stream(
             }
             next = read.next() => next,
         };
-        let message = next
-            .context("stream ended")?
-            .context("websocket read")?;
+        let message = next.context("stream ended")?.context("websocket read")?;
         match message {
             Message::Text(text) => handle_text(&text, tx).await,
             Message::Ping(data) => write.send(Message::Pong(data)).await.context("pong")?,
@@ -106,7 +104,7 @@ async fn connect_and_stream(
 /// Handles one text frame: notification → parse → forward with arrival time.
 async fn handle_text(text: &str, tx: &mpsc::Sender<StreamEvent>) {
     let Ok(value) = serde_json::from_str::<Value>(text) else {
-        return; // non-JSON frame — ignore
+        return; // non-JSON frame, ignore
     };
     if value.get("method").and_then(Value::as_str) != Some("slotsUpdatesNotification") {
         return; // subscribe ack or other notification type
@@ -164,7 +162,10 @@ mod tests {
     #[test]
     fn now_unix_ms_sane() {
         let now = now_unix_ms();
-        let system = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
+        let system = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
         assert!(now <= system && system - now < 1_000);
     }
 }

@@ -2,7 +2,7 @@
 //!
 //! The EWMA statistic `z_t = α·x_t + (1-α)·z_{t-1}` smooths noise while
 //! remaining sensitive to persistent shifts: its limits START NARROW and
-//! widen toward the asymptote `L·σ·sqrt(α/(2-α))` — the chart is most
+//! widen toward the asymptote `L·σ·sqrt(α/(2-α))`; the chart is most
 //! sensitive right after calibration, and a drift of a fraction of a sigma
 //! is flagged within a handful of samples, faster than a 3-sigma rule on the
 //! raw values.
@@ -20,7 +20,7 @@ pub struct Ewma {
 }
 
 impl Ewma {
-    /// Creates a chart calibrated to `(center, sigma)` — the warmup mean and
+    /// Creates a chart calibrated to `(center, sigma)`: the warmup mean and
     /// stddev. `alpha` in (0, 1] controls smoothing; `limits_l` is the control
     /// limit width in sigma units (3.0 is the classical choice).
     pub fn new(center: f64, sigma: f64, alpha: f64, limits_l: f64) -> Self {
@@ -42,7 +42,9 @@ impl Ewma {
     pub fn push(&mut self, x: f64) -> bool {
         self.t += 1;
         self.z = self.alpha * x + (1.0 - self.alpha) * self.z;
-        let factor = (self.alpha / (2.0 - self.alpha) * (1.0 - (1.0 - self.alpha).powi(2 * self.t as i32))).sqrt();
+        let factor = (self.alpha / (2.0 - self.alpha)
+            * (1.0 - (1.0 - self.alpha).powi(2 * self.t as i32)))
+        .sqrt();
         let ucl = self.center + self.limits_l * self.sigma * factor;
         let lcl = self.center - self.limits_l * self.sigma * factor;
         let breach = self.z > ucl || self.z < lcl;
@@ -59,13 +61,17 @@ impl Ewma {
 
     /// Upper control limit for the current sample index.
     pub fn ucl(&self) -> f64 {
-        let factor = (self.alpha / (2.0 - self.alpha) * (1.0 - (1.0 - self.alpha).powi(2 * (self.t.max(1)) as i32))).sqrt();
+        let factor = (self.alpha / (2.0 - self.alpha)
+            * (1.0 - (1.0 - self.alpha).powi(2 * (self.t.max(1)) as i32)))
+        .sqrt();
         self.center + self.limits_l * self.sigma * factor
     }
 
     /// Lower control limit for the current sample index.
     pub fn lcl(&self) -> f64 {
-        let factor = (self.alpha / (2.0 - self.alpha) * (1.0 - (1.0 - self.alpha).powi(2 * (self.t.max(1)) as i32))).sqrt();
+        let factor = (self.alpha / (2.0 - self.alpha)
+            * (1.0 - (1.0 - self.alpha).powi(2 * (self.t.max(1)) as i32)))
+        .sqrt();
         self.center - self.limits_l * self.sigma * factor
     }
 
@@ -127,7 +133,7 @@ mod tests {
         assert!(breaches <= 5, "symmetric noise breached {breaches} times");
     }
 
-    /// Limits widen from the calibration point toward the asymptote — the
+    /// Limits widen from the calibration point toward the asymptote: the
     /// chart is most sensitive right after calibration.
     #[test]
     fn limits_widen_to_asymptote() {
@@ -141,7 +147,10 @@ mod tests {
             e2
         };
         let late = e_late.ucl() - 100.0;
-        assert!(late > early, "late limit {late} must be wider than early {early}");
+        assert!(
+            late > early,
+            "late limit {late} must be wider than early {early}"
+        );
         // Asymptote: L·σ·sqrt(α/(2-α)).
         let asymptote = 3.0 * 5.0 * (0.2 / 1.8f64).sqrt();
         assert!((late - asymptote).abs() < 1e-6);

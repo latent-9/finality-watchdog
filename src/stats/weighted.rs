@@ -2,7 +2,7 @@
 //!
 //! The weights are the leader's activated stake at the time the slot was
 //! produced, so the statistics answer "what latency does stake-weighted
-//! consensus see?" rather than "what did this observer sample?" — a
+//! consensus see?" rather than "what did this observer sample?": a
 //! stake-weighted p50 weights a top-stake leader's slot proportionally more
 //! than a bottom-decile leader's slot.
 
@@ -69,7 +69,10 @@ mod tests {
         samples.push((100.0, 90.0));
         samples.push((2000.0, 10.0));
         let p50 = weighted_percentile(&samples, 50.0).unwrap();
-        assert!((p50 - 100.0).abs() < 1e-9, "weighted p50 {p50} must sit at 100");
+        assert!(
+            (p50 - 100.0).abs() < 1e-9,
+            "weighted p50 {p50} must sit at 100"
+        );
         let p99 = weighted_percentile(&samples, 99.0).unwrap();
         assert!(p99 > 100.0, "p99 {p99} must cross into the heavy tail");
         let mean = weighted_mean(&samples).unwrap();

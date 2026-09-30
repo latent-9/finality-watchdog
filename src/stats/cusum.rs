@@ -1,9 +1,9 @@
-//! Two-sided CUSUM change-point detection — the core of regime-shift
+//! Two-sided CUSUM change-point detection: the core of regime-shift
 //! detection.
 //!
 //! CUSUM accumulates standardized deviations from the baseline: it is the
 //! sequential probability ratio test for a mean shift, and detects a change
-//! of `δ` sigmas with average run length `O(1/δ²)` — the statistically
+//! of `δ` sigmas with average run length `O(1/δ²)`: the statistically
 //! correct tool for "the network's finality regime just changed" (e.g. the
 //! Alpenglow transition from ~2s to ~150ms).
 
@@ -25,7 +25,7 @@ pub struct Cusum {
 }
 
 impl Cusum {
-    /// Creates a CUSUM calibrated to `(mu0, sigma0)` — the warmup mean and
+    /// Creates a CUSUM calibrated to `(mu0, sigma0)`: the warmup mean and
     /// stddev. `k` is the allowance in sigma units (0.5 detects a 1σ shift
     /// efficiently); `h` is the decision interval (4–5 gives an in-control
     /// ARL in the hundreds).
@@ -178,15 +178,15 @@ mod tests {
     }
 
     /// CUSUM is shift-sensitive: a moderate outlier (z below h) does not
-    /// alarm, but a huge one exceeds h in a single step — which is also an
+    /// alarm, but a huge one exceeds h in a single step, which is also an
     /// alarm (the watcher reports it; Robust handles outlier classification).
     #[test]
     fn outlier_semantics() {
         let mut c = Cusum::new(100.0, 5.0, 0.5, 5.0);
-        // z = 0.8: s_plus = 0.3 — no alarm.
+        // z = 0.8: s_plus = 0.3, no alarm.
         assert!(!c.push(104.0));
         assert_eq!(c.alarms(), 0);
-        // z = 20: s_plus = 19.5 > h — single-step alarm.
+        // z = 20: s_plus = 19.5 > h: single-step alarm.
         assert!(c.push(200.0));
         assert_eq!(c.alarms(), 1);
     }

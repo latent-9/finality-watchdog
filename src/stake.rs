@@ -165,7 +165,7 @@ mod tests {
     }
 
     /// Schedule entries overlapping (a leader listed twice for one slot)
-    /// keep the map consistent — the real RPC schedule never does this, but
+    /// keep the map consistent: the real RPC schedule never does this, but
     /// the map must not corrupt. The winner depends on HashMap iteration
     /// order (randomized), so only "some active stake wins" is asserted.
     #[test]
@@ -174,8 +174,16 @@ mod tests {
         schedule.insert("A".to_string(), vec![0, 0]);
         schedule.insert("B".to_string(), vec![0]);
         let accounts = vec![
-            VoteAccount { node_pubkey: "A".to_string(), activated_stake: 1, delinquent: false },
-            VoteAccount { node_pubkey: "B".to_string(), activated_stake: 2, delinquent: false },
+            VoteAccount {
+                node_pubkey: "A".to_string(),
+                activated_stake: 1,
+                delinquent: false,
+            },
+            VoteAccount {
+                node_pubkey: "B".to_string(),
+                activated_stake: 2,
+                delinquent: false,
+            },
         ];
         let m = StakeMap::from_parts(0, 0, 1, &schedule, &accounts);
         let won = m.stake_for_slot(0).expect("some stake");
