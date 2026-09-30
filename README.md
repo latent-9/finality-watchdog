@@ -66,6 +66,21 @@ And when a shift is detected, it prints immediately:
 - **Slot lifecycle tracking is bounded**: in-flight entries fall behind the highest slot seen are pruned; dead slots are dropped.
 - No Solana SDK dependency — raw JSON-RPC over `tokio-tungstenite` (wss) + `ureq` (https polling).
 
+## Tuning
+
+Mainnet's finality latency oscillates in **leader-driven waves** (±~300ms, period
+~20-30 slots): each leader's block production quality shifts the distribution
+slightly, and a single global baseline flags every wave. For calmer detection on
+mainnet, raise the decision interval and warmup — the defaults are tuned to be
+sensitive:
+
+```
+cargo run --release -- --warmup 200 --cusum-h 8 --ewma-alpha 0.05
+```
+
+On a local test validator (or after an Alpenglow-style regime change, where the
+shift is an order of magnitude), the defaults fire as designed.
+
 ## TL;DR (Bahasa Indonesia)
 
 Tool Rust yang nyambung ke RPC validator Solana, ngukur **berapa lama slot jadi finalized** (sekarang ~12.8 detik karena Tower BFT), dan **deteksi otomatis momen jaringan berubah rezim** — jadi pas Alpenglow ship (target ~150ms), tool ini yang bakal bilang "finality barusan turun drastis" secara statistik (CUSUM), bukan sekadar nampilin angka. Semua komponennya streaming (memori konstan): histogram log-linear dengan error bound terbukti, Welford, EWMA control chart, CUSUM, anomaly detection robust, dan persentil berbobot stake.

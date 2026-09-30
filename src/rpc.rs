@@ -48,9 +48,14 @@ pub async fn fetch_epoch_info(url: &str) -> anyhow::Result<Value> {
     rpc(url, "getEpochInfo", serde_json::json!([])).await
 }
 
-/// Fetches the leader schedule for an epoch as identity → relative indices.
-pub async fn fetch_leader_schedule(url: &str, epoch: u64) -> anyhow::Result<HashMap<String, Vec<u64>>> {
-    let value = rpc(url, "getLeaderSchedule", serde_json::json!([epoch])).await?;
+/// Fetches the leader schedule as identity → relative indices.
+///
+/// Called with NO params: the public RPC returns `null` for an explicit
+/// epoch (verified live against api.mainnet-beta.solana.com), and without
+/// params it serves the current epoch's schedule — which is exactly what the
+/// watcher wants, since the map is refreshed per epoch anyway.
+pub async fn fetch_leader_schedule(url: &str) -> anyhow::Result<HashMap<String, Vec<u64>>> {
+    let value = rpc(url, "getLeaderSchedule", serde_json::json!([])).await?;
     serde_json::from_value(value).context("leader schedule shape")
 }
 
@@ -95,7 +100,7 @@ pub async fn fetch_stake_map(url: &str) -> anyhow::Result<StakeMap> {
         .and_then(Value::as_u64)
         .ok_or_else(|| anyhow!("epoch info without epoch"))?;
     let epoch_start = absolute_slot - slot_index;
-    let schedule = fetch_leader_schedule(url, epoch).await?;
+    let schedule = fetch_leader_schedule(url).await?;
     let vote_accounts = fetch_vote_accounts(url).await?;
     Ok(StakeMap::from_parts(
         epoch,
