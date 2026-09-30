@@ -1,0 +1,18 @@
+[package]
+name = "finality-watchdog"
+version = "0.1.0"
+edition = "2021"
+description = "Live Solana finality latency watchdog: streams slot updates from an Agave validator RPC, measures confirm/finalize latency distributions, and statistically detects consensus regime shifts (e.g. the Alpenglow transition)."
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+futures-util = { version = "0.3", features = ["sink"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "signal"] }
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
+ureq = "2"
+
+[profile.release]
+lto = true
