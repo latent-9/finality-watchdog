@@ -81,6 +81,3 @@ cargo run --release -- --warmup 200 --cusum-h 8 --ewma-alpha 0.05
 On a local test validator (or after an Alpenglow-style regime change, where the
 shift is an order of magnitude), the defaults fire as designed.
 
-## TL;DR (Bahasa Indonesia)
-
-Tool Rust yang nyambung ke RPC validator Solana, ngukur **berapa lama slot jadi finalized** (sekarang ~12.8 detik karena Tower BFT), dan **deteksi otomatis momen jaringan berubah rezim** — jadi pas Alpenglow ship (target ~150ms), tool ini yang bakal bilang "finality barusan turun drastis" secara statistik (CUSUM), bukan sekadar nampilin angka. Semua komponennya streaming (memori konstan): histogram log-linear dengan error bound terbukti, Welford, EWMA control chart, CUSUM, anomaly detection robust, dan persentil berbobot stake.
